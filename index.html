@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>JEE 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --font: 'Space Grotesk', sans-serif;
+    --radius: 24px;
+
+    /* LIGHT THEME */
+    --bg: #ebf9ff;
+    --surface: rgba(255, 255, 255, 0.88);
+    --text: #003d4d;
+    --primary: #00bcd4;
+    --accent: #a2d2ff;
+    --border: rgba(0, 188, 212, 0.15);
+    --bar-bg: rgba(0, 188, 212, 0.08);
+}
+
+[data-theme="Dark"] {
+    --bg: #050505;
+    --surface: #111111;
+    --text: #ffffff;
+    --primary: #ff4d00;
+    --accent: #ff8c00;
+    --border: #222222;
+    --bar-bg: rgba(255, 255, 255, 0.05);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; transition: background 0.5s ease, color 0.5s; }
+
+body { 
+    background: var(--bg); color: var(--text); font-family: var(--font);
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow-x: hidden;
+}
+
+/* PARTICLE BACKGROUND CANVAS */
+canvas.bg-canvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1; pointer-events: none;
+}
+
+header { width:100%; padding:120px 5% 30px; text-align:center; }
+h1 { font-size: clamp(2.5rem, 10vw, 5.5rem); text-transform: uppercase; font-weight:700; letter-spacing:-2px; }
+
+/* TOGGLE */
+.toggle-wrapper {
+    position: fixed; top:30px; z-index:1000; background: var(--surface);
+    padding:6px; border-radius:50px; border:1px solid var(--border);
+    display:flex; gap:5px; backdrop-filter: blur(20px);
+}
+.toggle-btn { 
+    padding:10px 25px; border:none; border-radius:50px; cursor:pointer;
+    font-weight:700; font-size:0.7rem; background:transparent; color:var(--text);
+    font-family: var(--font);
+}
+.active-mode { background: var(--primary); color:white !important; }
+[data-theme="Dark"] .active-mode { color:#000 !important; font-weight:900; }
+
+/* OVERALL PROGRESS */
+.overall-card {
+    width:90%; max-width:1200px; background: var(--surface); padding:25px 35px;
+    border-radius: var(--radius); border:1px solid var(--border); margin-bottom:25px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.05);
+}
+.progress-header { display:flex; justify-content:space-between; margin-bottom:12px; font-weight:700; font-size:0.85rem; letter-spacing:1px; }
+.track { width:100%; height:32px; background: var(--bar-bg); border-radius:50px; overflow:hidden; position:relative; }
+.fill { 
+    height:100%; background: linear-gradient(90deg, var(--primary), var(--accent));
+    width:0%; transition: width 1s cubic-bezier(0.4,0,0.2,1); position:relative; overflow:hidden;
+    display:flex; align-items:center; justify-content:flex-end; padding-right:15px; color:white; font-weight:900; font-size:0.75rem;
+}
+[data-theme="Dark"] .fill { color:#000; }
+.fill::after {
+    content:""; position:absolute; top:0; left:-100%; width:100%; height:100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+@keyframes shimmer { 0% { left:-100%; } 100% { left:100%; } }
+
+/* CONTROLS */
+.controls { display:flex; gap:10px; width:90%; max-width:1200px; margin-bottom:25px; flex-wrap:wrap; }
+.search-bar { 
+    flex:1; min-width:250px; background: var(--surface); border:1px solid var(--border);
+    padding:15px 25px; border-radius:50px; color: var(--text); outline:none; font-family: var(--font);
+}
+.sort-btn { background: var(--surface); border:1px solid var(--border); padding:10px 22px; border-radius:50px; color:var(--text); cursor:pointer; font-weight:600; font-size:0.75rem; }
+.sort-btn.active { background: var(--primary); color:white; border-color: var(--primary); }
+[data-theme="Dark"] .sort-btn.active { color:#000; }
+
+/* GRID */
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap:20px; width:90%; max-width:1200px; padding-bottom:120px; }
+.card { background: var(--surface); padding:30px; border-radius: var(--radius); border:1px solid var(--border); }
+.card h2 { font-size:1.6rem; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:8px; color: var(--primary); }
+.item { display:flex; align-items:center; padding:14px; margin:8px 0; background: rgba(127,127,127,0.05); border-radius:12px; cursor:pointer; }
+.item:hover { transform:translateX(5px); background: rgba(127,127,127,0.1); }
+.dot { width:20px; height:20px; border:2px solid var(--primary); border-radius:5px; margin-right:12px; display:flex; align-items:center; justify-content:center; font-size:10px; }
+.completed .dot { background: var(--primary); color:white; }
+[data-theme="Dark"] .completed .dot { color:#000; font-weight:900; }
+.completed span { text-decoration:line-through; opacity:0.4; }
+</style>
+</head>
+<body data-theme="Day">
+
+<canvas class="bg-canvas" id="bgCanvas"></canvas>
+
+<div class="toggle-wrapper">
+    <button id="l-btn" class="toggle-btn active-mode" onclick="setTheme('Day')">DAY</button>
+    <button id="d-btn" class="toggle-btn" onclick="setTheme('Dark')">NIGHT</button>
+</div>
+
+<header>
+    <p style="opacity:0.6; letter-spacing:5px; font-weight:500;">MISSION: JEE 2026</p>
+    <h1 id="title">EARLY BIRDS</h1>
+</header>
+
+<div class="overall-card">
+    <div class="progress-header"><span>MISSION SYNC STATUS</span><span id="overall-pc">0%</span></div>
+    <div class="track"><div id="overall-fill" class="fill"></div></div>
+</div>
+
+<div class="controls">
+    <input type="text" id="search" class="search-bar" placeholder="Search chapters..." oninput="render()">
+    <button id="btn-all" class="sort-btn active" onclick="setSort('all')">ALL</button>
+    <button id="btn-pending" class="sort-btn" onclick="setSort('pending')">PENDING</button>
+    <button id="btn-done" class="sort-btn" onclick="setSort('done')">SYNCED</button>
+</div>
+
+<div class="grid" id="main-grid"></div>
+
+<script>
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+
+let w = canvas.width = window.innerWidth;
+let h = canvas.height = window.innerHeight;
+
+window.addEventListener('resize', () => {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    initParticles();
+});
+
+const colorsLight = ['#ff4d4d','#ffd700','#00ff00','#00bfff'];
+const colorsDark  = ['#ff8c00'];
+
+const PARTICLE_COUNT = 60;   // ↓ reduced
+const MAX_LINES = 3;         // ↓ huge optimization
+const LINE_DIST = 110;
+
+let particles = [];
+let lastTime = 0;
+const FPS_LIMIT = 45;
+
+function initParticles() {
+    particles = [];
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            r: Math.random() * 2 + 1,
+            color: document.body.dataset.theme === 'Day'
+                ? colorsLight[Math.floor(Math.random() * colorsLight.length)]
+                : colorsDark[0]
+        });
+    }
+}
+
+function animate(t) {
+    if (t - lastTime < 1000 / FPS_LIMIT) {
+        requestAnimationFrame(animate);
+        return;
+    }
+    lastTime = t;
+
+    ctx.fillStyle = document.body.dataset.theme === 'Day'
+        ? 'rgba(235,249,255,0.12)'
+        : 'rgba(5,5,5,0.15)';
+    ctx.fillRect(0, 0, w, h);
+
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > w) p.vx *= -1;
+        if (p.y < 0 || p.y > h) p.vy *= -1;
+
+        // particle
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // lines (limited)
+        let connections = 0;
+        for (let j = i + 1; j < particles.length && connections < MAX_LINES; j++) {
+            const q = particles[j];
+            const dx = p.x - q.x;
+            const dy = p.y - q.y;
+            const d = dx * dx + dy * dy;
+
+            if (d < LINE_DIST * LINE_DIST) {
+                ctx.strokeStyle = document.body.dataset.theme === 'Day'
+                    ? 'rgba(0,180,216,0.15)'
+                    : 'rgba(255,140,0,0.25)';
+                ctx.lineWidth = 0.4;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(q.x, q.y);
+                ctx.stroke();
+                connections++;
+            }
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+
+initParticles();
+requestAnimationFrame(animate);
+
+
+
+/* ===================== SYLLABUS LOGIC ===================== */
+const syllabus = {
+      Physics: {
+    "Class 11": [
+      "Units and Measurements","Motion in a Straight Line","Motion in a Plane","Laws of Motion",
+      "Work, Energy, and Power","System of Particles and Rotational Motion","Gravitation",
+      "Mechanical Properties of Solids","Mechanical Properties of Fluids","Thermal Properties of Matter",
+      "Thermodynamics","Kinetic Theory of Gases","Oscillations","Waves"
+    ],
+    "Class 12": [
+      "Electric Charges and Fields","Electrostatic Potential and Capacitance","Current Electricity",
+      "Moving Charges and Magnetism","Magnetism and Matter","Electromagnetic Induction",
+      "Alternating Current","Electromagnetic Waves","Ray Optics and Optical Instruments",
+      "Wave Optics","Dual Nature of Radiation and Matter","Atoms","Nuclei","Semiconductor Electronics"
+    ]
+  },
+
+  Chemistry: {
+    "Class 11": [
+      "Some Basic Concepts of Chemistry","Structure of Atom","Classification of Elements & Periodicity",
+      "Chemical Bonding and Molecular Structure","Thermodynamics","Equilibrium",
+      "The Redox Reaction",
+      "The p-Block Element (Group 13 & 14)","Organic Chemistry – Basic Principles",
+      "Hydrocarbons"
+    ],
+    "Class 12": [
+      "Solutions","Electrochemistry","Chemical Kinetics",
+      "The p-Block Element (Group 15–18)","The d-Block Element","The f-Block Element",
+      "Coordination Compounds","Haloalkanes and Haloarenes",
+      "Alcohols, Phenols, and Ethers","Aldehydes, Ketones & Carboxylic Acids",
+      "Amines","Biomolecules"
+    ]
+  },
+
+  Mathematics: {
+    "Class 11": [
+      "Sets, Relations and Functions","Trigonometric Functions",
+      "Complex Numbers","Permutations and Combinations","Binomial Theorem",
+      "Sequences and Series","Straight Lines","3D Geometry",
+      "Limits and Derivatives","Statistics","Probability"
+    ],
+    "Class 12": [
+      "Relations and Functions","Inverse Trigonometric Functions","Matrices","Determinants",
+      "Continuity and Differentiability","Applications of Derivatives","Integrals",
+      "Applications of Integrals","Differential Equations","Vector Algebra",
+      "Three Dimensional Geometry","Probability"
+    ]
+  },
+}
+const KEY='JEE_2026_MASTER_PROGRESS';
+let state = JSON.parse(localStorage.getItem(KEY)||'{}');
+let currentSort='all';
+
+function setTheme(t){
+    document.body.setAttribute('data-theme',t);
+    document.getElementById('l-btn').className = t==='Day'? 'toggle-btn active-mode' : 'toggle-btn';
+    document.getElementById('d-btn').className = t==='Dark'? 'toggle-btn active-mode' : 'toggle-btn';
+    document.getElementById('title').innerText = t==='Day'? 'EARLY BIRDS':'NIGHT OWLS';
+    initParticles();
+    render();
+}
+
+function setSort(s){
+    currentSort=s;
+    ['btn-all','btn-pending','btn-done'].forEach(id=>document.getElementById(id).classList.remove('active'));
+    document.getElementById('btn-'+s).classList.add('active');
+    render();
+}
+function render(){
+  const grid = document.getElementById('main-grid');
+  const search = document.getElementById('search').value.toLowerCase();
+  grid.innerHTML = "";
+
+  let totalTasks = 0, doneTasks = 0;
+
+  Object.entries(syllabus).forEach(([subject, classes]) => {
+    let subjectHTML = '';
+    let subjectHasVisible = false;
+
+    Object.entries(classes).forEach(([cls, chapters]) => {
+      let clsTotal = 0, clsDone = 0;
+      let listHtml = '';
+      let hasVisibleItems = false;
+
+      chapters.forEach((ch, i) => {
+        const id = subject + cls + i;
+        const isDone = state[id];
+
+        totalTasks++; if(isDone) doneTasks++;
+        clsTotal++; if(isDone) clsDone++;
+
+        const matchesSearch = ch.toLowerCase().includes(search);
+        const matchesSort =
+          currentSort === 'all' ||
+          (currentSort === 'done' && isDone) ||
+          (currentSort === 'pending' && !isDone);
+
+        if(matchesSearch && matchesSort){
+          hasVisibleItems = true;
+          subjectHasVisible = true;
+
+          listHtml += `
+            <div class="item ${isDone?'completed':''}" onclick="toggle('${id}')">
+              <div class="dot">${isDone?'✓':''}</div>
+              <span>${ch}</span>
+            </div>`;
+        }
+      });
+
+      if(hasVisibleItems){
+        const percent = Math.round((clsDone / clsTotal) * 100);
+        subjectHTML += `
+          <div style="margin-bottom:25px">
+            <h3 style="margin-bottom:8px; opacity:0.7">${cls}</h3>
+            <div class="progress-header">
+              <span>${clsDone}/${clsTotal} COMPLETED</span>
+              <span>${percent}%</span>
+            </div>
+            <div class="track">
+              <div class="fill" style="width:${percent}%"></div>
+            </div>
+            <div style="margin-top:15px">${listHtml}</div>
+          </div>`;
+      }
+    });
+
+    if(subjectHasVisible){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<h2>${subject}</h2>${subjectHTML}`;
+      grid.appendChild(card);
+    }
+  });
+
+  const overallPercent = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  document.getElementById('overall-pc').innerText = overallPercent + '%';
+  document.getElementById('overall-fill').style.width = overallPercent + '%';
+}
+
+
+function toggle(id){
+    state[id]=!state[id];
+    localStorage.setItem(KEY,JSON.stringify(state));
+    render();
+}
+
+render();
+</script>
+</body>
+</html>
